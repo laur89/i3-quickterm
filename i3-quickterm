@@ -204,7 +204,8 @@ def toggle_quickterm(shell, conn):
 
         if qt.workspace().name == get_current_workspace(conn).name:
             current_ratio = qt.rect.height / qt.workspace().rect.height
-            if not isclose(current_ratio, SHELL_RATIOS[shell], abs_tol=0.03):
+            # note we also don't want to store ratio if we're fullscreen:
+            if qt.fullscreen_mode != 1 and not isclose(current_ratio, SHELL_RATIOS[shell], abs_tol=0.03):
                 SHELL_RATIOS[shell] = current_ratio
             move_back(conn, '[con_id={}]'.format(qt.id))
         else:

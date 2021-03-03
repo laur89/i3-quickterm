@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
 
-import argparse
-import fcntl
-import json
-import os
-import shlex
-import subprocess
-import sys
 import socket
-import selectors
-
-from contextlib import contextmanager, suppress
-from pathlib import Path
-from threading import Thread
-from math import isclose
-
-import i3ipc
-
+import sys
+import argparse
+from contextlib import contextmanager
 
 SOCKET_FILE = '/tmp/.i3-quickterm.sock'
 CONF = {  # define default values here; can be overridden by user conf
@@ -190,6 +177,7 @@ def toggle_quickterm(shell, conn):
 
     # does it exist already?
     if len(qt) == 0:
+        # print('qt wind does not exist')
         term = TERMS.get(CONF['term'], CONF['term'])
         qt_cmd = "{} -i -r {} {}".format(sys.argv[0],
                                          SHELL_RATIOS[shell],
@@ -199,16 +187,19 @@ def toggle_quickterm(shell, conn):
                                   expanded=qt_cmd,
                                   string=quoted(qt_cmd))
         subprocess.Popen(term_cmd)
-    else:
+    else:  # qt window already exists
+        # print('qt wind exists')
         qt = qt[0]
 
         if qt.workspace().name == get_current_workspace(conn).name:
+            # print('  moving win back')
             current_ratio = qt.rect.height / qt.workspace().rect.height
             # note we also don't want to store ratio if we're fullscreen:
             if qt.fullscreen_mode != 1 and not isclose(current_ratio, SHELL_RATIOS[shell], abs_tol=0.03):
                 SHELL_RATIOS[shell] = current_ratio
             move_back(conn, '[con_id={}]'.format(qt.id))
         else:
+            # print('  bringing win up')
             bring_up(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell])
 
 
@@ -277,6 +268,13 @@ def send_msg(shell):
     client_socket.close()
 
 
+def validate_shell_arg(shell):
+    if shell not in CONF['shells']:
+        print('unknown shell: {}'.format(shell), file=sys.stderr)
+        return False
+    return True
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='i3-quickterm',
                                      description="""
@@ -296,10 +294,36 @@ if __name__ == '__main__':
                         dest='ratio',
                         type=float,
                         help='height ratio of a shell to be instantiated')
+    parser.add_argument('-t', '--toggle',
+                        dest='toggle',
+                        help='toggle quickterm window',
+                        action='store_true')
+
     parser.add_argument('shell', metavar='SHELL', nargs='?')
     args = parser.parse_args()
 
+    if args.toggle:
+        if not validate_shell_arg(args.shell):
+            sys.exit(1)
+        send_msg(args.shell)
+        sys.exit(0)
+
+    import fcntl
+    import json
+    import os
+    import shlex
+    import subprocess
+
+    from contextlib import suppress
+    from pathlib import Path
+    from math import isclose
+
+    import i3ipc
+
     if args.daemon:
+        import selectors
+        from threading import Thread
+
         load_conf()
         SHELL_RATIOS = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
         TERMS = {
@@ -322,11 +346,9 @@ if __name__ == '__main__':
         load_conf()
         toggle_quickterm_select()
         sys.exit(0)
-    elif args.shell not in CONF['shells']:
-        print('unknown shell: {}'.format(args.shell), file=sys.stderr)
+    elif not validate_shell_arg(args.shell):
         sys.exit(1)
     elif args.in_place:
         load_conf()
         launch_inplace(args.shell, args.ratio)
-    else:  # toggle action
-        send_msg(args.shell)
+

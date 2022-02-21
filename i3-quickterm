@@ -11,6 +11,7 @@ CONF = {  # define default values here; can be overridden by user conf
     "term": "urxvt",
     "history": "{$HOME}/.cache/i3/i3-quickterm.order",
     "ratio": 0.25,
+    "borderWidthPx": 2,
     "pos": "top",
     "shells": {
         "haskell": "ghci",
@@ -89,10 +90,11 @@ def move_back(conn, selector):
 
 
 # make terminal visible
-def bring_up(conn, mark_name, pos='top', ratio=0.25):
+def bring_up(conn, mark_name, pos='top', ratio=0.25, border_width=0):
     ws = get_current_workspace(conn)
     wx, wy = ws.rect.x, ws.rect.y
-    width, wheight = ws.rect.width, ws.rect.height
+    width = ws.rect.width - border_width*2  # decrease twice the window border width, otherwise the window won't fit on the screen
+    wheight = ws.rect.height
 
     height = int(wheight * ratio)
     posx = wx
@@ -200,7 +202,7 @@ def toggle_quickterm(shell, conn):
             move_back(conn, '[con_id={}]'.format(qt.id))
         else:
             # print('  bringing win up')
-            bring_up(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell])
+            bring_up(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell], CONF['borderWidthPx'])
 
 
 def launch_inplace(shell, ratio):
@@ -208,7 +210,7 @@ def launch_inplace(shell, ratio):
     shell_mark = MARK_QT.format(shell)
     conn.command('mark {}'.format(shell_mark))
     move_back(conn, '[con_mark={}]'.format(shell_mark))
-    bring_up(conn, shell_mark, CONF['pos'], ratio)
+    bring_up(conn, shell_mark, CONF['pos'], ratio, CONF['borderWidthPx'])
     prog_cmd = expand_command(CONF['shells'][shell])
     os.execvp(prog_cmd[0], prog_cmd)
 

@@ -93,7 +93,7 @@ def move_back(conn, selector):
 def bring_up(conn, mark_name, pos='top', ratio=0.25, border_width=0):
     ws = get_current_workspace(conn)
     wx, wy = ws.rect.x, ws.rect.y
-    width = ws.rect.width - border_width*2  # decrease twice the window border width, otherwise the window won't fit on the screen
+    width = ws.rect.width - border_width*2  # decrease twice the window border width, otherwise the window won't fit on the screen, and overflows into neighbouring screen(s)
     wheight = ws.rect.height
 
     height = int(wheight * ratio)
@@ -322,6 +322,8 @@ if __name__ == '__main__':
 
     import i3ipc
 
+    # to query i3 border width, do something like
+    # i3-msg -r -t get_config | jq -r '.included_configs[].variable_replaced_contents' | grep -Po '^default_border\s+.*\s+\K\d+$'
     if args.daemon:
         import selectors
         from threading import Thread
@@ -330,11 +332,12 @@ if __name__ == '__main__':
         SHELL_RATIOS = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
         TERMS = {
             'alacritty': TERM('alacritty', titleopt='-t'),
+            'foot': TERM('foot', titleopt='-T', execopt='', execfmt='expanded'),
+            'gnome-terminal': TERM('gnome-terminal', execopt='--', titleopt=None),
             'kitty': TERM('kitty', titleopt='-T'),
-            'gnome-terminal': TERM('gnome-terminal',
-                                   execopt='--', titleopt=None),
             'roxterm': TERM('roxterm'),
             'st': TERM('st'),
+            'terminator': TERM('terminator', execopt='-x', titleopt='-T'),
             'termite': TERM('termite', execfmt='string', titleopt='-t'),
             'urxvt': TERM('urxvt'),
             'urxvtc': TERM('urxvtc'),

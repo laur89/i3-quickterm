@@ -18,7 +18,9 @@ CONF = {  # define default values here; can be overridden by user conf
         "js": "node",
         "python": "ipython3 --no-banner",
         "shell": "{$SHELL}"
-    }
+    },
+    "envVarBlacklistPatterns": [],
+    "envVarBlacklist": []
 }
 
 MARK_QT_PATTERN = 'quickterm_.*'
@@ -205,6 +207,22 @@ def toggle_quickterm(shell, conn):
             bring_up(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell], CONF['borderWidthPx'])
 
 
+# before running the shell process in-place, remove blacklisted environment variables:
+def clean_env():
+    blacklistedEnvVars = CONF.get('envVarBlacklistPatterns')
+    if blacklistedEnvVars:
+        from re import compile
+        blacklistedEnvVars = [compile(i) for i in blacklistedEnvVars]
+        for k, v in os.environ.items():
+            for blacklistRgx in blacklistedEnvVars:
+                if blacklistRgx.fullmatch(k):
+                    os.environ.pop(k, None)
+                    break
+
+    for env_var in CONF.get('envVarBlacklist', []):
+        os.environ.pop(env_var, None)
+
+
 def launch_inplace(shell, ratio):
     conn = i3ipc.Connection()
     shell_mark = MARK_QT.format(shell)
@@ -212,6 +230,8 @@ def launch_inplace(shell, ratio):
     move_back(conn, '[con_mark={}]'.format(shell_mark))
     bring_up(conn, shell_mark, CONF['pos'], ratio, CONF['borderWidthPx'])
     prog_cmd = expand_command(CONF['shells'][shell])
+
+    clean_env()
     os.execvp(prog_cmd[0], prog_cmd)
 
 

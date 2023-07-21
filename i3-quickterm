@@ -124,10 +124,9 @@ def toggle_quickterm_select():
     """Hide a quickterm visible on current workspace or prompt
     the user for a shell type"""
     conn = i3ipc.Connection()
-    ws = get_current_workspace(conn)
 
     # is there a quickterm opened in the current workspace?
-    qt = ws.find_marked(MARK_QT_PATTERN)
+    qt = get_current_workspace(conn).find_marked(MARK_QT_PATTERN)
     if qt:
         qt = qt[0]
         move_back(conn, '[con_id={}]'.format(qt.id))
@@ -226,11 +225,13 @@ def clean_env():
 def launch_inplace(shell, ratio):
     conn = i3ipc.Connection()
     shell_mark = MARK_QT.format(shell)
-    conn.command('mark {}'.format(shell_mark))
-    move_back(conn, '[con_mark={}]'.format(shell_mark))
-    bring_up(conn, shell_mark, CONF['pos'], ratio, CONF['borderWidthPx'])
-    prog_cmd = expand_command(CONF['shells'][shell])
+    qt = conn.get_tree().find_marked(shell_mark)
+    if not qt:
+        conn.command('mark {}'.format(shell_mark))
+        move_back(conn, '[con_mark={}]'.format(shell_mark))
+        bring_up(conn, shell_mark, CONF['pos'], ratio, CONF['borderWidthPx'])
 
+    prog_cmd = expand_command(CONF['shells'][shell])
     clean_env()
     os.execvp(prog_cmd[0], prog_cmd)
 

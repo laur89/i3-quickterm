@@ -2,6 +2,11 @@
 
 A small drop-down terminal for [i3wm](https://i3wm.org/) and [sway](https://swaywm.org/)
 
+Note this is a fork of [lbonn/i3-quickterm](https://github.com/lbonn/i3-quickterm).
+Upstream is still active and maintained, but the fork you're currently viewing
+has somewhat diverged in its architecture -- mainly started employing client-server
+paradigm.
+
 ## Features
 
 * use your favourite terminal emulator
@@ -76,14 +81,21 @@ Unspecified keys are inherited from the defaults:
     "menu": "rofi -dmenu -p 'quickterm: ' -no-custom -auto-select",
     "term": "auto",
     "history": "{$HOME}/.cache/i3-quickterm/shells.order",
+    "socket": "/tmp/.i3-quickterm.sock",
     "ratio": 0.25,
+    "borderWidthPx": 2,
     "pos": "top",
     "shells": {
-        "haskell": "ghci",
+        "haskell": "ghci",  # TODO: removed from upstream
         "js": "node",
         "python": "ipython3 --no-banner",
         "shell": "{$SHELL}"
-    }
+    },
+    "signalToShellToggles": {
+        "SIGUSR1": "shell"
+    },
+    "envVarBlacklistPatterns": [],
+    "envVarBlacklist": []
 }
 ```
 

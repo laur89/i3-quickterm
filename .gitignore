@@ -1,0 +1,8 @@
+*.pyc
+*.swp
+build/
+dist/
+i3_qt.egg-info/
+.DS_Store
+.idea/
+

@@ -7,6 +7,20 @@ import os
 import argparse
 from contextlib import contextmanager
 
+import fcntl
+import shlex
+import subprocess
+
+from contextlib import suppress
+from pathlib import Path
+from math import isclose
+
+import i3ipc
+import selectors
+import signal
+import shutil
+from i3_quickterm.version import __version__
+
 CONF = {  # define default values here; can be overridden by user conf
     "menu": "rofi -dmenu -p 'quickterm: ' -no-custom -auto-select",
     "term": "auto",
@@ -28,6 +42,7 @@ CONF = {  # define default values here; can be overridden by user conf
     "envVarBlacklist": []
 }
 
+SHELL_RATIOS = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
 MARK_QT_PATTERN = 'quickterm_.*'
 MARK_QT = 'quickterm_{}'
 
@@ -44,6 +59,21 @@ def TERM(executable, execopt='-e', execfmt='expanded', titleopt='-T'):
 
     fmt += f" {execopt} {{{execfmt}}}"
     return fmt
+
+TERMS = {
+    'alacritty': TERM('alacritty', titleopt='-t'),
+    'foot': TERM('foot', titleopt='-T', execopt='', execfmt='expanded'),
+    'gnome-terminal': TERM('gnome-terminal', execopt='--', titleopt=None),
+    'kitty': TERM('kitty', titleopt='-T'),
+    'roxterm': TERM('roxterm'),
+    'st': TERM('st'),
+    'terminator': TERM('terminator', execopt='-x', titleopt='-T'),
+    'termite': TERM('termite', execfmt='string', titleopt='-t'),
+    'urxvt': TERM('urxvt'),
+    'urxvtc': TERM('urxvtc'),
+    'xfce4-terminal': TERM('xfce4-terminal', execfmt='string'),
+    'xterm': TERM('xterm'),
+}
 
 
 def quoted(s):
@@ -316,6 +346,8 @@ class Listener:
                 callback(key.fileobj)
 
     def run(self):
+        from threading import Thread
+
         t_i3 = Thread(target=self.launch_i3)
         t_server = Thread(target=self.launch_server)
         for t in (t_i3, t_server):
@@ -339,7 +371,7 @@ def validate_shell_arg(shell):
     return True
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(prog='i3-quickterm',
                                      description="""
         Launch and toggle the visibility of shells.
@@ -364,9 +396,9 @@ if __name__ == '__main__':
                         action='store_true')
 
     parser.add_argument('shell', metavar='SHELL', nargs='?')
-    # parser.add_argument(  # TODO: version not implemented
-    # "--version", action="version", version=f"%(prog)s {__version__}"
-    # )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     args = parser.parse_args()
 
     load_conf()
@@ -377,39 +409,13 @@ if __name__ == '__main__':
         send_msg(args.shell)
         sys.exit(0)
 
-    import fcntl
-    import shlex
-    import subprocess
-
-    from contextlib import suppress
-    from pathlib import Path
-    from math import isclose
-
-    import i3ipc
-
     # to query i3 border width, do something like
     # i3-msg -r -t get_config | jq -r '.included_configs[].variable_replaced_contents' | grep -Po '^default_border\s+.*\s+\K\d+$'
     if args.daemon:
-        import selectors
-        import signal
-        import shutil
-        from threading import Thread
+        from tendo import singleton
 
-        SHELL_RATIOS = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
-        TERMS = {
-            'alacritty': TERM('alacritty', titleopt='-t'),
-            'foot': TERM('foot', titleopt='-T', execopt='', execfmt='expanded'),
-            'gnome-terminal': TERM('gnome-terminal', execopt='--', titleopt=None),
-            'kitty': TERM('kitty', titleopt='-T'),
-            'roxterm': TERM('roxterm'),
-            'st': TERM('st'),
-            'terminator': TERM('terminator', execopt='-x', titleopt='-T'),
-            'termite': TERM('termite', execfmt='string', titleopt='-t'),
-            'urxvt': TERM('urxvt'),
-            'urxvtc': TERM('urxvtc'),
-            'xfce4-terminal': TERM('xfce4-terminal', execfmt='string'),
-            'xterm': TERM('xterm'),
-        }
+        global LOCK
+        LOCK = singleton.SingleInstance()
 
         listener = Listener()
         listener.run()
@@ -424,3 +430,6 @@ if __name__ == '__main__':
     elif args.in_place:
         launch_inplace(args.shell, args.ratio)
 
+
+if __name__ == '__main__':
+    main()

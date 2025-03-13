@@ -1,4 +1,4 @@
-## 0.0.1 (unreleased)
+## 0.0.1 (2025-03-13)
 
 
 - start using CI

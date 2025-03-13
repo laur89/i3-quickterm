@@ -11,7 +11,7 @@ paradigm.
 
 * use your favourite terminal emulator
 * can select a shell with [dmenu](http://tools.suckless.org/dmenu/) /
-  [rofi](https://github.com/DaveDavenport/rofi)
+  [rofi](https://github.com/davatorium/rofi)
 * adapt to screen width
 * multi-monitor aware
 

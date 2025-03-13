@@ -1,10 +1,8 @@
-i3-quickterm
-=============
+# i3-quickterm
 
 A small drop-down terminal for [i3wm](https://i3wm.org/) and [sway](https://swaywm.org/)
 
-Features
---------
+## Features
 
 * use your favourite terminal emulator
 * can select a shell with [dmenu](http://tools.suckless.org/dmenu/) /
@@ -12,8 +10,13 @@ Features
 * adapt to screen width
 * multi-monitor aware
 
-Usage
------
+## Installation
+
+```
+pipx install i3-qt
+```
+
+## Usage
 
 When launched, it will minimize the quickterm on the current screen if there is
 one.  Otherwise, it will either prompt the user for the shell to open or use the
@@ -37,10 +40,9 @@ bindsym $mod+p exec --no-startup-id i3-quickterm
 bindsym $mod+b exec --no-startup-id i3-quickterm shell
 ```
 
-Configuration
--------------
+## Configuration
 
-The configuration is read from `~/.config/i3/i3-quickterm.json`.
+The configuration is read from `~/.config/i3-quickterm/config.json`
 
 * `menu`: the dmenu-compatible application used to select the shell
 * `term`: the terminal emulator of choice
@@ -53,9 +55,11 @@ The configuration is read from `~/.config/i3/i3-quickterm.json`.
 
 `term` can be either:
 - a format string, like this one: `urxvt -t {title} -e {expanded}` with
-  the correct arguments format of your terminal. Some terminals, like
-  xfce4-terminal need the command argument to be passed as a string. In
+  the correct arguments format of your terminal. Some terminals - like
+  xfce4-terminal - need the command argument to be passed as a string. In
   this case, replace `{expanded}` by `{string}`
+- `auto` to select the first existing terminal of the list above (only to
+  provide friendler defaults, not recommended otherwise)
 - a terminal name from the hardcoded list, which should work out of the box.
   Right now, the only reference for the list is the source code
   (search for `TERMS =`).
@@ -70,8 +74,8 @@ Unspecified keys are inherited from the defaults:
 ```
 {
     "menu": "rofi -dmenu -p 'quickterm: ' -no-custom -auto-select",
-    "term": "urxvt",
-    "history": "{$HOME}/.cache/i3/i3-quickterm.order",
+    "term": "auto",
+    "history": "{$HOME}/.cache/i3-quickterm/shells.order",
     "ratio": 0.25,
     "pos": "top",
     "shells": {
@@ -83,10 +87,9 @@ Unspecified keys are inherited from the defaults:
 }
 ```
 
-Requirements
-------------
+## Requirements
 
-* python >= 3.4
+* python >= 3.8
 * i3 >= v3.11 or sway >= 1.2
 * [i3ipc-python](https://i3ipc-python.readthedocs.io/en/latest/) >= v2.0.1
 * dmenu or rofi (optional)

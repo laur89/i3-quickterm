@@ -5,13 +5,12 @@ import sys
 import json
 import os
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 
 import fcntl
 import shlex
 import subprocess
 
-from contextlib import suppress
 from pathlib import Path
 from math import isclose
 
@@ -37,7 +36,7 @@ CONF = {  # define default values here; can be overridden by user conf
     "shells": {
         "haskell": "ghci",  # TODO: removed from upstream
         "js": "node",
-        "python": "ipython3 --no-banner",
+        "python": "ipython3 --no-banner --no-confirm-exit",
         "shell": "{$SHELL}"
     },
     "signalToShellToggles": {
@@ -212,8 +211,7 @@ def toggle_quickterm_select():
 
         if len(shell) == 0:
             return
-
-        if shell not in CONF['shells']:
+        elif shell not in CONF['shells']:
             return
 
         if hist is not None:

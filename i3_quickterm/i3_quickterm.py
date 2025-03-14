@@ -456,10 +456,6 @@ def main():
                         dest='border',
                         type=int,
                         help='assumed border width of the window to be instantiated')
-    parser.add_argument('-t', '--toggle',
-                        dest='toggle',
-                        help='toggle quickterm window',
-                        action='store_true')
 
     parser.add_argument('shell', metavar='SHELL', nargs='?')
     parser.add_argument(
@@ -468,12 +464,6 @@ def main():
     args = parser.parse_args()
 
     load_conf()
-
-    if args.toggle:
-        if not validate_shell_arg(args.shell):
-            sys.exit(1)
-        send_msg(args.shell)
-        sys.exit(0)
 
     if args.daemon:
         from tendo import singleton
@@ -495,6 +485,8 @@ def main():
         sys.exit(1)
     elif args.in_place:
         launch_inplace(args.shell, args.ratio, args.border)
+    else:  # toggle shell
+        send_msg(args.shell)
 
 
 if __name__ == '__main__':

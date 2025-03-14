@@ -27,7 +27,8 @@ CONF = {  # define default values here; can be overridden by user conf
     "history": "{$HOME}/.cache/i3-quickterm/shells.order",
     "socket": "/tmp/.i3-quickterm.sock",
     "ratio": 0.25,
-    "borderWidthPx": 2,
+    "borderWidthPx": -1,  # value will be resolved at init; if you don't want border value to be found from config, set it to value >= 0
+    "defaultBorderWidthPx": 2,  # default/fallback value; we try to fetch actual value from config
     "pos": "top",
     "shells": {
         "haskell": "ghci",  # TODO: removed from upstream
@@ -245,8 +246,9 @@ def toggle_quickterm(shell, conn):
     if len(qt) == 0:
         # print('qt wind does not exist')
         term = select_terminal()
-        qt_cmd = "{} -i -r {} {}".format(sys.argv[0],
+        qt_cmd = "{} -i -r {} -b {} {}".format(sys.argv[0],
                                          SHELL_RATIOS[shell],
+                                         CONF['borderWidthPx'],
                                          shell)
 
         term_cmd = expand_command(term, title=quoted(term_title(shell)),
@@ -267,7 +269,7 @@ def toggle_quickterm(shell, conn):
             move_to_scratchpad(conn, '[con_id={}]'.format(qt.id))
         else:
             # print('  bringing win up')
-            focus_on_current_ws(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell], CONF['borderWidthPx'])
+            focus_on_current_ws(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell], qt.current_border_width)
 
 
 # before running the shell process in-place, remove blacklisted environment variables:
@@ -286,7 +288,9 @@ def clean_env():
         os.environ.pop(env_var, None)
 
 
-def launch_inplace(shell, ratio):
+# note instead of passing border value here, we could resolve it ourselves
+# by    border = find_border_width(conn)
+def launch_inplace(shell, ratio, border):
     """QT is called by itself
        Mark current window, move back and focus again, then run shell in current process
     """
@@ -296,7 +300,7 @@ def launch_inplace(shell, ratio):
     if not qt:
         conn.command('mark {}'.format(shell_mark))
         # move_to_scratchpad(conn, '[con_mark={}]'.format(shell_mark))  # was removed by upstream as unneeded; haven't confirmed myself
-        focus_on_current_ws(conn, shell_mark, CONF['pos'], ratio, CONF['borderWidthPx'])
+        focus_on_current_ws(conn, shell_mark, CONF['pos'], ratio, border)
 
     prog_cmd = expand_command(CONF['shells'][shell])
     clean_env()
@@ -307,9 +311,25 @@ def on_shutdown(i3_conn, e):
     os._exit(0)
 
 
+# equivalent to:
+# i3-msg -r -t get_config | jq -r '.included_configs[].variable_replaced_contents' | grep -Po '^default_border\s+.*\s+\K\d+$'
+def find_border_width(conn):
+    v = CONF['borderWidthPx']
+    if v > -1:
+        return v
+
+    try:
+        c = conn.get_config()
+        v = next(x for x in c.ipc_data['included_configs'][0]['variable_replaced_contents'].split('\n') if x.startswith('default_border '))
+        return int(v.split()[-1])
+    except Exception as e:
+        return CONF['defaultBorderWidthPx']
+
+
 class Listener:
     def __init__(self):
         self.i3 = i3ipc.Connection()
+        CONF['borderWidthPx'] = find_border_width(self.i3)
         self.i3.on('shutdown', on_shutdown)
         self.listening_socket = socket.socket(socket.AF_UNIX,
                                               socket.SOCK_STREAM)
@@ -390,6 +410,10 @@ def main():
                         dest='ratio',
                         type=float,
                         help='height ratio of a shell to be instantiated')
+    parser.add_argument('-b', '--border',
+                        dest='border',
+                        type=int,
+                        help='assumed border width of the window to be instantiated')
     parser.add_argument('-t', '--toggle',
                         dest='toggle',
                         help='toggle quickterm window',
@@ -409,8 +433,6 @@ def main():
         send_msg(args.shell)
         sys.exit(0)
 
-    # to query i3 border width, do something like
-    # i3-msg -r -t get_config | jq -r '.included_configs[].variable_replaced_contents' | grep -Po '^default_border\s+.*\s+\K\d+$'
     if args.daemon:
         from tendo import singleton
 
@@ -428,7 +450,7 @@ def main():
     elif not validate_shell_arg(args.shell):
         sys.exit(1)
     elif args.in_place:
-        launch_inplace(args.shell, args.ratio)
+        launch_inplace(args.shell, args.ratio, args.border)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,8 @@
 ## 0.0.2 (unreleased)
 
 
-- Nothing changed yet.
+- resolve border width from config or actual window
+    - as opposed to hard-coded config
 
 
 ## 0.0.1 (2025-03-13)

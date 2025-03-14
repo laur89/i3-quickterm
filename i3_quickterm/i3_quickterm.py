@@ -19,6 +19,7 @@ import i3ipc
 import selectors
 import signal
 import shutil
+from datetime import datetime
 from i3_quickterm.version import __version__
 
 CONF = {  # define default values here; can be overridden by user conf
@@ -26,6 +27,9 @@ CONF = {  # define default values here; can be overridden by user conf
     "term": "auto",
     "history": "{$HOME}/.cache/i3-quickterm/shells.order",
     "socket": "/tmp/.i3-quickterm.sock",
+    "state_f": "/tmp/.i3-quickterm.state",
+    "max_persisted_state_age_sec": 2,
+    "store_state_on_restart": True,
     "ratio": 0.25,
     "borderWidthPx": -1,  # value will be resolved at init; if you don't want border value to be found from config, set it to value >= 0
     "defaultBorderWidthPx": 2,  # default/fallback value; we try to fetch actual value from config
@@ -43,7 +47,7 @@ CONF = {  # define default values here; can be overridden by user conf
     "envVarBlacklist": []
 }
 
-SHELL_RATIOS = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
+SHELL_RATIOS = {}  # will be initialized on init
 MARK_QT_PATTERN = 'quickterm_.*'
 MARK_QT = 'quickterm_{}'
 
@@ -307,7 +311,45 @@ def launch_inplace(shell, ratio, border):
     os.execvp(prog_cmd[0], prog_cmd)
 
 
+def _unix_time_now() -> int:
+    return int(datetime.now().timestamp())
+
+
+def persist_state():
+    try:
+        data = {
+                'timestamp': _unix_time_now(),
+                'ratios': SHELL_RATIOS
+               }
+
+        with open(CONF['state_f'], 'w') as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(e)
+
+
+def load_ratios() -> dict:
+    default = {k: CONF['ratio'] for k in set(CONF['shells'].keys())}
+
+    ff = CONF['state_f']
+    if not (os.path.isfile(ff) and os.access(ff, os.R_OK)):
+        return default
+
+    try:
+        with open(ff, 'r') as f:
+            s = json.load(f)
+            t = s.get('timestamp', 0)
+
+            if (_unix_time_now() - t <= CONF['max_persisted_state_age_sec']):
+                return s.get('ratios', default)
+    except Exception as e:
+        print(e)
+    return default
+
+
 def on_shutdown(i3_conn, e):
+    if e.change == 'restart' and CONF['store_state_on_restart']:
+        persist_state()
     os._exit(0)
 
 
@@ -438,6 +480,8 @@ def main():
 
         global LOCK
         LOCK = singleton.SingleInstance()
+        global SHELL_RATIOS
+        SHELL_RATIOS = load_ratios()
 
         listener = Listener()
         listener.run()

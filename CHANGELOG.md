@@ -3,6 +3,7 @@
 
 - resolve border width from config or actual window
     - as opposed to hard-coded config
+- store & hyrdrate shell ratios on i3 restart
 
 
 ## 0.0.1 (2025-03-13)

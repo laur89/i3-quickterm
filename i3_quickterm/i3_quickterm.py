@@ -139,16 +139,18 @@ def move_to_scratchpad(conn, selector):
 
 
 # make terminal visible
-def focus_on_current_ws(conn, mark_name, pos='top', ratio=0.25, border_width=0):
+def focus_on_current_ws(conn, mark_name, ratio=0.25, border_width=0):
     ws = get_current_workspace(conn)
     wx, wy = ws.rect.x, ws.rect.y
-    width = ws.rect.width - border_width*2  # decrease twice the window border width, otherwise the window won't fit on the screen, and overflows into neighbouring screen(s)
+    width = ws.rect.width
+    if CONF['OUTPUTS'] > 1:
+        width -= border_width*2  # decrease twice the window border width, otherwise the window won't fit on the screen, and overflows into neighbouring screen
     wheight = ws.rect.height
 
     height = int(wheight * ratio)
     posx = wx
 
-    if pos == 'bottom':
+    if CONF['pos'] == 'bottom':
         margin = 6
         posy = wy + wheight - height - margin
     else:  # pos == 'top'
@@ -248,10 +250,11 @@ def toggle_quickterm(shell, conn):
     if len(qt) == 0:
         # print('qt wind does not exist')
         term = select_terminal()
-        qt_cmd = "{} -i -r {} -b {} {}".format(sys.argv[0],
-                                         SHELL_RATIOS[shell],
-                                         CONF['borderWidthPx'],
-                                         shell)
+        qt_cmd = "{} -i -r {} -b {} -o {} {}".format(sys.argv[0],
+                                                    SHELL_RATIOS[shell],
+                                                    CONF['borderWidthPx'],
+                                                    CONF['OUTPUTS'],
+                                                    shell)
 
         term_cmd = expand_command(term, title=quoted(term_title(shell)),
                                   expanded=qt_cmd,
@@ -271,7 +274,7 @@ def toggle_quickterm(shell, conn):
             move_to_scratchpad(conn, '[con_id={}]'.format(qt.id))
         else:
             # print('  bringing win up')
-            focus_on_current_ws(conn, shell_mark, CONF['pos'], SHELL_RATIOS[shell], qt.current_border_width)
+            focus_on_current_ws(conn, shell_mark, SHELL_RATIOS[shell], qt.current_border_width)
 
 
 # before running the shell process in-place, remove blacklisted environment variables:
@@ -292,7 +295,7 @@ def clean_env():
 
 # note instead of passing border value here, we could resolve it ourselves
 # by    border = find_border_width(conn)
-def launch_inplace(shell, ratio, border):
+def launch_inplace(shell, ratio, border, outputs):
     """QT is called by itself
        Mark current window, move back and focus again, then run shell in current process
     """
@@ -302,7 +305,8 @@ def launch_inplace(shell, ratio, border):
     if not qt:
         conn.command('mark {}'.format(shell_mark))
         # move_to_scratchpad(conn, '[con_mark={}]'.format(shell_mark))  # was removed by upstream as unneeded; haven't confirmed myself
-        focus_on_current_ws(conn, shell_mark, CONF['pos'], ratio, border)
+        CONF['OUTPUTS'] = outputs
+        focus_on_current_ws(conn, shell_mark, ratio, border)
 
     prog_cmd = expand_command(CONF['shells'][shell])
     clean_env()
@@ -345,10 +349,14 @@ def load_ratios() -> dict:
     return default
 
 
-def on_shutdown(i3_conn, e):
+def on_shutdown(i3, e):
     if e.change == 'restart' and CONF['store_state_on_restart']:
         persist_state()
     os._exit(0)
+
+
+def on_output(i3, e=None):
+    CONF['OUTPUTS'] = len([o for o in i3.get_outputs() if o.active])
 
 
 # equivalent to:
@@ -370,10 +378,13 @@ class Listener:
     def __init__(self):
         self.i3 = i3ipc.Connection()
         CONF['borderWidthPx'] = find_border_width(self.i3)
+        on_output(self.i3)
         self.i3.on('shutdown', on_shutdown)
+        self.i3.on('output', on_output)
         self.listening_socket = socket.socket(socket.AF_UNIX,
                                               socket.SOCK_STREAM)
         sock = CONF['socket']
+
         if os.path.exists(sock):
             os.remove(sock)
         self.listening_socket.bind(sock)
@@ -454,6 +465,10 @@ def main():
                         dest='border',
                         type=int,
                         help='assumed border width of the window to be instantiated')
+    parser.add_argument('-o', '--outputs',
+                        dest='outputs',
+                        type=int,
+                        help='number of active monitors')
 
     parser.add_argument('shell', metavar='SHELL', nargs='?')
     parser.add_argument(
@@ -482,7 +497,7 @@ def main():
     elif not validate_shell_arg(args.shell):
         sys.exit(1)
     elif args.in_place:
-        launch_inplace(args.shell, args.ratio, args.border)
+        launch_inplace(args.shell, args.ratio, args.border, args.outputs)
     else:  # toggle shell
         send_msg(args.shell)
 

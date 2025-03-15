@@ -5,6 +5,8 @@
     - as opposed to hard-coded config
 - store & hyrdrate shell ratios on i3 restart
 - remove [--toggle] option
+- only decrease the window width by 2*border_width
+  if we have more than one active output
 
 
 ## 0.0.1 (2025-03-13)

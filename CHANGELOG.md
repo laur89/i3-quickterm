@@ -1,4 +1,4 @@
-## 0.0.2 (unreleased)
+## 0.0.2 (2025-03-15)
 
 
 - resolve border width from config or actual window

@@ -361,7 +361,7 @@ def on_output(i3, e=None):
 
 # equivalent to:
 # i3-msg -r -t get_config | jq -r '.included_configs[].variable_replaced_contents' | grep -Po '^default_border\s+.*\s+\K\d+$'
-def find_border_width(conn):
+def find_border_width(conn) -> int:
     v = CONF['borderWidthPx']
     if v > -1:
         return v

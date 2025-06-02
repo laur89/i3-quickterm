@@ -54,7 +54,6 @@ The configuration is read from `~/.config/i3-quickterm/config.json`
 * `history`: a file to save the last-used shells order, last-used ordering
   is disabled if set to null
 * `ratio`: the initial percentage of the screen height to use
-* `borderWidthPx`: the window border width configured in i3
 * `pos`: where to pop the terminal (`top` or `bottom`)
 * `shells`: registered shells (`{ name: command }`)
 

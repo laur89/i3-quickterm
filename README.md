@@ -80,7 +80,7 @@ Unspecified keys are inherited from the defaults:
     "menu": "rofi -dmenu -p 'quickterm: ' -no-custom -auto-select",
     "term": "auto",
     "history": "{$HOME}/.cache/i3-quickterm/shells.order",
-    "socket": "/tmp/.i3-quickterm.sock",
+    "socket": "{$XDG_RUNTIME_DIR}/i3-quickterm/ipc.sock",
     "ratio": 0.25,
     "borderWidthPx": 2,
     "pos": "top",
@@ -104,3 +104,8 @@ Unspecified keys are inherited from the defaults:
 * i3 >= v3.11 or sway >= 1.2
 * [i3ipc-python](https://i3ipc-python.readthedocs.io/en/latest/) >= v2.0.1
 * dmenu or rofi (optional)
+
+## See also
+
+- https://gitlab.com/aquator/i3-scratchpad
+

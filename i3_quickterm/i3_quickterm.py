@@ -21,12 +21,21 @@ import shutil
 from datetime import datetime
 from i3_quickterm.version import __version__
 
+def _runtime_path() -> str:
+    xdg_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    dir_path = xdg_dir + "/i3-quickterm"
+    if not os.path.isdir(dir_path):
+        os.makedirs(dir_path)
+    return dir_path
+
+RUNTIME_PATH = _runtime_path()
+
 CONF = {  # define default values here; can be overridden by user conf
     "menu": "rofi -dmenu -p 'quickterm: ' -no-custom -auto-select",
     "term": "auto",
     "history": "{$HOME}/.cache/i3-quickterm/shells.order",
-    "socket": "/tmp/.i3-quickterm.sock",
-    "state_f": "/tmp/.i3-quickterm.state",
+    "socket": f"{RUNTIME_PATH}/ipc.sock",
+    "state_f": f"{RUNTIME_PATH}/i3qt.state",
     "max_persisted_state_age_sec": 2,
     "store_state_on_restart": True,
     "ratio": 0.25,
@@ -91,12 +100,11 @@ def expand_command(cmd, **rplc_map):
 
 
 def term_title(shell):
-    return '{} - i3-quickterm'.format(shell)
+    return f'{shell} - i3-quickterm'
 
 
 def conf_path():
-    home_dir = os.environ['HOME']
-    xdg_dir = os.environ.get('XDG_CONFIG_DIR', '{}/.config'.format(home_dir))
+    xdg_dir = os.environ.get('XDG_CONFIG_HOME', f'{os.environ['HOME']}/.config')
     return xdg_dir + '/i3-quickterm/config.json'
 
 
@@ -105,7 +113,7 @@ def read_conf():
         with open(conf_path(), 'r') as f:
             return json.load(f)
     except Exception as e:
-        print('invalid config file: {}'.format(e), file=sys.stderr)
+        print(f'invalid config file: {e}', file=sys.stderr)
         return {}
 
 
@@ -134,8 +142,7 @@ def load_conf():
 
 
 def move_to_scratchpad(conn, selector):
-    conn.command('{} floating enable, move scratchpad'
-                 .format(selector))
+    conn.command(f'{selector} floating enable, move scratchpad')
 
 
 # make terminal visible
@@ -182,7 +189,7 @@ def toggle_quickterm_select():
     qt = get_current_workspace(conn).find_marked(MARK_QT_PATTERN)
     if qt:
         qt = qt[0]
-        move_to_scratchpad(conn, '[con_id={}]'.format(qt.id))
+        move_to_scratchpad(conn, f'[con_id={qt.id}]')
         return
 
     # undefined shell and nothing on workspace: ask for shell selection
@@ -271,7 +278,7 @@ def toggle_quickterm(shell, conn):
             # note we also don't want to store ratio if we're fullscreen:
             if qt.fullscreen_mode != 1 and not isclose(current_ratio, SHELL_RATIOS[shell], abs_tol=0.01):
                 SHELL_RATIOS[shell] = current_ratio
-            move_to_scratchpad(conn, '[con_id={}]'.format(qt.id))
+            move_to_scratchpad(conn, f'[con_id={qt.id}]')
         else:
             # print('  bringing win up')
             focus_on_current_ws(conn, shell_mark, SHELL_RATIOS[shell], qt.current_border_width)
@@ -303,8 +310,8 @@ def launch_inplace(shell, ratio, border, outputs):
     shell_mark = MARK_QT.format(shell)
     qt = conn.get_tree().find_marked(shell_mark)
     if not qt:
-        conn.command('mark {}'.format(shell_mark))
-        # move_to_scratchpad(conn, '[con_mark={}]'.format(shell_mark))  # was removed by upstream as unneeded; haven't confirmed myself
+        conn.command(f'mark {shell_mark}')
+        # move_to_scratchpad(conn, f'[con_mark={shell_mark}]')  # was removed by upstream as unneeded; haven't confirmed myself
         CONF['OUTPUTS'] = outputs
         focus_on_current_ws(conn, shell_mark, ratio, border)
 
@@ -437,7 +444,7 @@ def send_msg(shell):
 
 def validate_shell_arg(shell):
     if shell not in CONF['shells']:
-        print('unknown shell: {}'.format(shell), file=sys.stderr)
+        print(f'unknown shell: {shell}', file=sys.stderr)
         return False
     return True
 

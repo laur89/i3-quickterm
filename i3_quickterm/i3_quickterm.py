@@ -52,7 +52,8 @@ CONF = {  # define default values here; can be overridden by user conf
         "SIGUSR1": "shell"
     },
     "envVarBlacklistPatterns": [],
-    "envVarBlacklist": []
+    "envVarBlacklist": [],
+    "OUTPUTS": 1  # default, just so we have a value
 }
 
 SHELL_RATIOS = {}  # will be initialized on init
@@ -146,7 +147,7 @@ def move_to_scratchpad(conn, selector):
 
 
 # make terminal visible
-def focus_on_current_ws(conn, mark_name, ratio=0.25, border_width=0):
+def focus_on_current_ws(conn, mark_name, ratio: float=0.25, border_width: int=0):
     ws = get_current_workspace(conn)
     wx, wy = ws.rect.x, ws.rect.y
     width = ws.rect.width
@@ -302,7 +303,7 @@ def clean_env():
 
 # note instead of passing border value here, we could resolve it ourselves
 # by    border = find_border_width(conn)
-def launch_inplace(shell, ratio, border, outputs):
+def launch_inplace(shell, ratio: float, border: int, outputs: int):
     """QT is called by itself
        Mark current window, move back and focus again, then run shell in current process
     """
@@ -312,7 +313,8 @@ def launch_inplace(shell, ratio, border, outputs):
     if not qt:
         conn.command(f'mark {shell_mark}')
         # move_to_scratchpad(conn, f'[con_mark={shell_mark}]')  # was removed by upstream as unneeded; haven't confirmed myself
-        CONF['OUTPUTS'] = outputs
+        if outputs:
+            CONF['OUTPUTS'] = outputs
         focus_on_current_ws(conn, shell_mark, ratio, border)
 
     prog_cmd = expand_command(CONF['shells'][shell])
@@ -475,6 +477,7 @@ def main():
     parser.add_argument('-o', '--outputs',
                         dest='outputs',
                         type=int,
+                        default=0,
                         help='number of active monitors')
 
     parser.add_argument('shell', metavar='SHELL', nargs='?')
